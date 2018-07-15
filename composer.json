@@ -1,0 +1,23 @@
+{
+    "name": "openwords/ads",
+    "type": "library",
+    "require-dev": {
+        "phpunit/phpunit": "^7"
+    },
+    "license": "MIT License",
+    "authors": [
+        {
+            "name": "Piotr Gmyz",
+            "email": "gmyz.piotr@gmail.com"
+        }
+    ],
+    "require": {
+        "league/csv": "^9.1"
+    },
+    "autoload": {
+        "psr-0": {
+            "Openwords": "src/",
+            "Openwords\\Tests": "src/tests/"
+        }
+    }
+}
