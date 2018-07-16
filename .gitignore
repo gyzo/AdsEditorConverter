@@ -1,2 +1,3 @@
 /vendor/
 .idea
+src/Openwords/Tests/Fixtures/output.csv

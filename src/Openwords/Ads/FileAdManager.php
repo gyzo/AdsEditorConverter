@@ -2,58 +2,118 @@
 
 namespace Openwords\Ads;
 
-use Openwords\Ads\File\Converter;
+
+use League\Csv\Reader;
+use League\Csv\Writer;
 
 class FileAdManager {
 
-    private $_converter;
+    private $_rows;
 
-    private $_csvFile;
+    private $_convertedRows;
 
-    private $_outFile;
+    private $_reader;
 
+    private $_writer;
 
-    public function __construct(string $from, string $to)
+    /** @var string */
+    private $_campaign;
+
+    /** @var IFilePrototype */
+    private $_prototype;
+
+    const HEADLINE = [
+        'Campaign', 'Max CPC', 'Ad Group', 'Keyword'
+    ];
+
+    /**
+     * FileAdManager constructor.
+     * @param string $from
+     * @param string $output
+     */
+    public function __construct(string $from, string $output)
     {
-        $this->_csvFile = $from;
-        $this->_outFile = $to;
-        $this->_converter = new Converter($from, $to);
+        $this->_rows = [];
+        $this->_convertedRows = [];
+        $this->_reader = Reader::createFromPath($from, 'r');
+        $this->_writer = Writer::createFromPath($output, 'w+');
     }
 
-    public function setCsvFile($path)
+    /**
+     * @param IFilePrototype $_prototype
+     */
+    public function setPrototype(IFilePrototype $_prototype)
     {
-        $this->_csvFile = $path;
+        $this->_prototype = $_prototype;
+    }
 
+    /**
+     * @param string $campaign
+     * @return $this
+     */
+    public function setCampaign(string $campaign)
+    {
+        $this->_campaign = $campaign;
         return $this;
     }
 
-    public function setOutFile($file)
+    private function _readRows()
     {
-        $this->_outFile = $file;
-
-        return $this;
+        $this->_rows = $this->_reader->getRecords();
+        return $this->_rows;
     }
 
-    public function print()
-    {
-        $cmp = new CompanyAds('Textile.com', []);
+    private function _convertRow(array $_r) {
+        $this->_convertedRows[] = $this->_getGroupRow($_r);
+        $this->_convertedRows[] = $this->_getAdRow(1, $_r);
+        $this->_convertedRows[] = $this->_getAdRow(2, $_r);
+    }
 
+    private function _getHeaderRow()
+    {
+        return $this->_prototype->getHeadline();
+    }
+
+    private function _getCampaignRow($nrRow)
+    {
+        return $this->_prototype->getCampaign($nrRow);
+    }
+
+    private function _getGroupRow(array $row)
+    {
+        return $this->_prototype->getGroup($row);
+    }
+
+    private function _getAdRow($nrRow,array $row)
+    {
+        return $this->_prototype->getAd($nrRow, $row);
+    }
+
+    public function convert()
+    {
+        $this->_convertedRows = [];
+        //insert header
+        $this->_convertedRows[] = $this->_getHeaderRow();
+        //insert campaign
+        $this->_convertedRows[] = $this->_getCampaignRow(1);
+        //insert group + two row per ad
         foreach($this->_readRows() as $_r) {
-            $gr = new GroupAds($cmp->getCampaign(), []);
-            $ad = new TextAd($cmp->getCampaign(), []);
-            $gr->pushAd($ad);
-            $cmp->pushGroup($gr);
+            $this->_convertRow($_r);
         }
-
+        //insert cmapign
+        $this->_convertedRows[] = $this->_getCampaignRow(2);
     }
 
-    public function _readRows()
+    /**
+     * @return array
+     */
+    public function getConvertedRows()
     {
-        return [];
+        return $this->_convertedRows;
     }
 
     public function save()
     {
-        $this->_converter->save($this->_outFile);
+        $this->_writer->insertAll($this->_convertedRows);
     }
 }
